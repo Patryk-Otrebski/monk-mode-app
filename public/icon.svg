@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Monk Mode">
+  <rect width="512" height="512" rx="104" fill="#111827"/>
+  <circle cx="256" cy="256" r="158" fill="#f8fafc" opacity=".08"/>
+  <path d="M256 111c64 0 116 52 116 116 0 94-116 174-116 174S140 321 140 227c0-64 52-116 116-116Z" fill="#f97316"/>
+  <path d="M256 149c43 0 78 35 78 78 0 64-78 117-78 117s-78-53-78-117c0-43 35-78 78-78Z" fill="#111827"/>
+  <path d="M255 184c24 0 43 20 43 43s-19 43-43 43-43-20-43-43 19-43 43-43Z" fill="#f8fafc"/>
+  <path d="M256 321l45 51h-90l45-51Z" fill="#f8fafc"/>
+</svg>
