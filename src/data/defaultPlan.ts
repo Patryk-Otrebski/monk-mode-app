@@ -4,6 +4,9 @@ const weekdays = [1, 2, 3, 4, 5];
 const everyDay = [0, 1, 2, 3, 4, 5, 6];
 const strengthDays = [0, 2, 4];
 const recoveryDays = [1, 3, 5, 6];
+const recoveryStudyDays = [1, 3, 5];
+const weekendDays = [0, 6];
+const saturdayOnly = [6];
 
 export const defaultSettings: AppSettings = {
   wakeTime: "07:00",
@@ -68,7 +71,7 @@ export const defaultTasks: RoutineTask[] = [
   },
   {
     id: "deep-work",
-    title: "Deep Work nad celem",
+    title: "Deep Work / nauka główna",
     category: "deepWork",
     start: "08:00",
     end: "09:20",
@@ -76,13 +79,33 @@ export const defaultTasks: RoutineTask[] = [
     days: everyDay,
     priority: "critical",
     weight: 8,
-    instructions: "Jeden wynik o najwyższej dźwigni: finanse, portfolio, nauka albo projekt. Telefon poza zasięgiem.",
-    rationale: "Blokowanie przełączania chroni kontrolę wykonawczą i pamięć roboczą. Najlepsza energia poznawcza idzie w cel zanim etat przejmie uwagę.",
+    instructions: "Główny blok nauki/projektu. Jeden wynik o najwyższej dźwigni: portfolio, kompetencja, kurs, projekt albo zadanie praktyczne. Telefon poza zasięgiem.",
+    rationale: "80 min mieści się w cyklu ultradobowym i ogranicza koszt przełączania. Rano kontrola wykonawcza, pamięć robocza i hamowanie impulsów są najmniej zużyte przez dzień, więc najtrudniejszy materiał idzie przed etatem.",
     checklist: [
       "Biurko zero",
-      "Jedno zadanie, jeden plik, jeden wynik",
+      "Jedno zadanie, jeden plik, jeden wynik nauki",
       "80 min bez komunikatorów i sociali",
-      "Na końcu zapisz lub wyślij rezultat"
+      "Na końcu 5 zdań: czego się nauczyłem i następny krok"
+    ],
+    isDefault: true
+  },
+  {
+    id: "weekend-study-sprint",
+    title: "Sprint nauki weekend",
+    category: "deepWork",
+    start: "10:00",
+    end: "12:00",
+    durationMinutes: 120,
+    days: weekendDays,
+    priority: "critical",
+    weight: 6,
+    instructions: "Sobota i niedziela: większy blok nauki bez etatu w tle. Dwie rundy po 50 min i 10 min przerwy między nimi.",
+    rationale: "Dłuższy weekendowy blok podnosi tygodniową objętość bez dokładania ciężkiego wysiłku poznawczego po pracy. Segmentacja 50/10 zmniejsza spadek uwagi, a blok praktyczny daje lepszy transfer niż bierne oglądanie materiału.",
+    checklist: [
+      "50 min: materiał albo implementacja",
+      "10 min: przerwa bez ekranu",
+      "50 min: aktywne odtworzenie / zadanie praktyczne",
+      "Zapisz 3 pytania do powtórki"
     ],
     isDefault: true
   },
@@ -231,21 +254,80 @@ export const defaultTasks: RoutineTask[] = [
     isDefault: true
   },
   {
+    id: "study-evening",
+    title: "Nauka wieczorna",
+    category: "deepWork",
+    start: "20:35",
+    end: "21:15",
+    durationMinutes: 40,
+    days: recoveryStudyDays,
+    priority: "standard",
+    weight: 4,
+    instructions: "Poniedziałek, środa, piątek. Krótki blok po kolacji: aktywne odtwarzanie, zadania praktyczne albo Anki. Zero pasywnego scrollowania kursu.",
+    rationale: "Spacing i retrieval practice dają wyraźnie lepsze utrwalanie niż ponowne czytanie. 40 min domyka łączny dzień nauki do około 2 h bez wchodzenia w fazę wysokiego pobudzenia przed snem.",
+    checklist: [
+      "5 min: wybierz mikrocel",
+      "25 min: zadanie praktyczne / recall bez podglądania",
+      "10 min: korekta błędów i fiszki",
+      "Zapisz, co wraca jutro rano"
+    ],
+    isDefault: true
+  },
+  {
+    id: "training-study-lite",
+    title: "Nauka lekka po treningu",
+    category: "deepWork",
+    start: "21:05",
+    end: "21:35",
+    durationMinutes: 30,
+    days: strengthDays,
+    priority: "standard",
+    weight: 3,
+    instructions: "Tylko niski opór: retrieval, fiszki, przegląd błędów albo czytanie notatek. Nie zaczynaj ciężkiego problemu po treningu.",
+    rationale: "Po późnym treningu priorytetem jest zejście pobudzenia współczulnego i ochrona snu. Krótkie odtwarzanie z pamięci wzmacnia ślady pamięciowe bez dokładania rozbudowanego, wysokoarousalowego bloku.",
+    checklist: [
+      "10-15 fiszek albo 3 pytania z pamięci",
+      "Popraw jeden błąd z poprzedniego bloku",
+      "Zapisz pierwszy krok na jutro"
+    ],
+    isDefault: true
+  },
+  {
     id: "light-block",
-    title: "Lekki blok",
+    title: "Sobotni przegląd lekki",
     category: "deepWork",
     start: "20:45",
     end: "21:15",
     durationMinutes: 30,
-    days: recoveryDays,
+    days: saturdayOnly,
     priority: "standard",
     weight: 3,
-    instructions: "Nauka, czytanie, portfolio albo mała praca koncepcyjna. Niskie tarcie, bez heroizmu.",
-    rationale: "Krótka, powtarzalna dawka utrzymuje ciągłość celu bez przeciążania snu.",
+    instructions: "Sobotni lekki przegląd po kolacji: notatki, fiszki, błędy, lista pytań. Bez nowego ciężkiego tematu.",
+    rationale: "Krótka powtórka weekendowa utrzymuje spacing i konsolidację bez zabierania regeneracji.",
     checklist: [
-      "Jedna mała rzecz albo 10 stron czytania",
-      "Nie zaczynaj nowego dużego projektu",
-      "Zapisz, co kontynuujesz jutro"
+      "Przejrzyj notatki z tygodnia",
+      "Zrób 10-15 fiszek albo pytań",
+      "Zapisz temat na niedzielny sprint"
+    ],
+    isDefault: true
+  },
+  {
+    id: "evening-free-buffer",
+    title: "Bufor regeneracyjny (czas wolny)",
+    category: "evening",
+    start: "21:35",
+    end: "22:20",
+    durationMinutes: 45,
+    days: everyDay,
+    priority: "optional",
+    weight: 1,
+    instructions: "To jest świadomy czas wolny, nie luka w planie. Ma być nisko-stymulujący: spacer, rozciąganie, rozmowa, prysznic, czytanie papierowe. Bez sociali i bez dokładania nowego projektu.",
+    rationale: "Stały bufor obniża sztywność planu i chroni sen. Niska stymulacja zmniejsza pobudzenie dopaminergiczne i współczulne przed shutdownem, a elastyczność poprawia utrzymanie nawyku.",
+    checklist: [
+      "Ekrany tylko jeśli realnie potrzebne",
+      "Zero sociali i krótkich dopaminowych bodźców",
+      "Uspokój ciało: spacer, mobilizacja albo prysznic",
+      "Nie rozpoczynaj nowej pętli pracy"
     ],
     isDefault: true
   },

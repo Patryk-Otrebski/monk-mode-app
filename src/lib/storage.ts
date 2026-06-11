@@ -2,7 +2,7 @@ import { defaultSettings, defaultTasks } from "../data/defaultPlan";
 import type { AppState, DayLog, DayMetrics } from "../types";
 
 const STORAGE_KEY = "monk-mode-state-v1";
-const CURRENT_VERSION = 6;
+const CURRENT_VERSION = 7;
 
 const defaultMetrics: DayMetrics = {
   sleepHours: 7.5,

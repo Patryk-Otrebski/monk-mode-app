@@ -46,6 +46,7 @@ body {
     linear-gradient(135deg, #0d141d 0%, #152130 42%, #101821 100%),
     linear-gradient(180deg, rgba(39, 211, 154, 0.06), transparent 340px),
     var(--bg);
+  overscroll-behavior-y: none;
 }
 
 button,
@@ -63,6 +64,11 @@ button {
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr);
   min-height: 100svh;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
 }
 
 .sidebar {

@@ -1,17 +1,31 @@
 {
   "name": "Monk Mode Tracker",
   "short_name": "Monk Mode",
-  "description": "Prywatny tracker rutyny, daily tasków, treningu i progresu.",
-  "start_url": "/",
+  "description": "Prywatny tracker rutyny, daily taskow, treningu i progresu.",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#111827",
+  "background_color": "#101821",
+  "theme_color": "#101821",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

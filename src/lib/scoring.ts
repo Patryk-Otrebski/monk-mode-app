@@ -1,8 +1,8 @@
 import { addDays, dateKey, parseDateKey } from "./date";
 import type { AppState, DayLog, DayMode, RoutineTask } from "../types";
 
-const trainingTaskIds = new Set(["reset-strength", "dinner-admin-training"]);
-const recoveryTaskIds = new Set(["reset-recovery", "dinner-admin-regular", "light-block"]);
+const trainingTaskIds = new Set(["reset-strength", "dinner-admin-training", "training-study-lite"]);
+const recoveryTaskIds = new Set(["reset-recovery", "dinner-admin-regular", "study-evening"]);
 
 export function tasksForDate(tasks: RoutineTask[], date: Date, dayMode: DayMode = "auto"): RoutineTask[] {
   const weekday = date.getDay();

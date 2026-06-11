@@ -1,5 +1,15 @@
-const CACHE_NAME = "monk-mode-v1";
-const CORE_ASSETS = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
+const CACHE_NAME = "monk-mode-v2";
+const assetUrl = (path) => new URL(path, self.registration.scope).toString();
+const APP_SHELL = assetUrl("index.html");
+const CORE_ASSETS = [
+  assetUrl(""),
+  APP_SHELL,
+  assetUrl("manifest.webmanifest"),
+  assetUrl("icon.svg"),
+  assetUrl("icon-192.png"),
+  assetUrl("icon-512.png"),
+  assetUrl("apple-touch-icon.png")
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -40,7 +50,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => caches.match("/index.html"));
+        .catch(() => caches.match(APP_SHELL));
     })
   );
 });
