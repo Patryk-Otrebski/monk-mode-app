@@ -2052,6 +2052,23 @@ textarea:focus {
   transform: rotate(225deg) translate(-1px, -1px);
 }
 
+.task-body .task-details-copy {
+  display: block;
+  margin: 10px 0 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(145, 164, 184, 0.16);
+  border-radius: 8px;
+  color: #d5e4ee;
+  background: rgba(12, 19, 29, 0.32);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: initial;
+}
+
 @media (max-width: 760px) {
   .task-details {
     margin-top: 10px;

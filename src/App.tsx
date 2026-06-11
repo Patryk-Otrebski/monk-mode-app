@@ -809,6 +809,7 @@ function TaskRow({
         {(task.rationale || hiddenChecklistCount > 0) && (
           <details className="task-details">
             <summary>Mechanizm i pełna lista</summary>
+            {task.instructions && <p className="task-details-copy">{task.instructions}</p>}
             {hiddenChecklistCount > 0 && (
               <ul>
                 {checklist.map((item, index) => (
