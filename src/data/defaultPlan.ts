@@ -4,365 +4,346 @@ const weekdays = [1, 2, 3, 4, 5];
 const everyDay = [0, 1, 2, 3, 4, 5, 6];
 const strengthDays = [0, 2, 4];
 const recoveryDays = [1, 3, 5, 6];
-const recoveryStudyDays = [1, 3, 5];
 const weekendDays = [0, 6];
-const saturdayOnly = [6];
+const sundayOnly = [0];
 
 export const defaultSettings: AppSettings = {
   wakeTime: "07:00",
-  workStart: "10:00",
-  workEnd: "18:00",
-  bedTime: "23:30",
+  bedTime: "23:00",
   caffeineCutoff: "13:00",
-  scoreTarget: 85
+  scoreTarget: 80
 };
 
 export const timerPresets: TimerPreset[] = [
-  { id: "meditation", label: "Medytacja", minutes: 10 },
-  { id: "deep-work", label: "Deep Work", minutes: 80 },
-  { id: "reset", label: "Reset mieszkania", minutes: 10 },
-  { id: "admin", label: "Administracja", minutes: 20 },
-  { id: "body-scan", label: "Skan ciała", minutes: 10 }
+  { id: "start-25", label: "Start 25", minutes: 25 },
+  { id: "deep-work", label: "Deep Work 50", minutes: 50 },
+  { id: "deep-work-long", label: "Deep Work 80", minutes: 80 },
+  { id: "reset", label: "Reset 10", minutes: 10 },
+  { id: "meditation", label: "Medytacja 10", minutes: 10 },
+  { id: "admin", label: "Admin 20", minutes: 20 }
 ];
 
+/**
+ * Plan dla dnia bez etatu. Bloki to okna, nie sztywne minuty — liczy się
+ * kolejność i zamknięcie bloku, nie start co do minuty.
+ * Kręgosłup dnia: pobudka -> projekt (na zewnątrz) -> praca (aplikacje)
+ * -> nauka -> ruch -> shutdown. Wielka Trójka decyduje, czy dzień się liczy.
+ */
 export const defaultTasks: RoutineTask[] = [
   {
     id: "morning-launch",
-    title: "Morning Launch",
+    title: "Start dnia: światło + ruch",
     category: "morning",
     start: "07:00",
-    end: "07:30",
-    durationMinutes: 30,
+    end: "07:45",
+    durationMinutes: 45,
     days: everyDay,
     priority: "critical",
     weight: 6,
-    instructions: "Jeden blok startowy bez telefonu. Liczy się zamknięcie sekwencji, nie perfekcja co do minuty.",
-    rationale: "Stała pobudka, światło i szybki ruch kotwiczą rytm dobowy, podnoszą pobudzenie korowe i redukują koszt pierwszych decyzji.",
+    instructions:
+      "Stała pobudka także bez pracy — to fundament całego systemu. Bez telefonu przez pierwszą godzinę.",
+    rationale:
+      "Bez etatu znika zewnętrzna struktura dnia i rytm dryfuje. REGULARNOŚĆ rytmu snu i pobudki jest silniejszym predyktorem zdrowia niż liczba godzin snu (UK Biobank, Windred i in. 2023). Stała pobudka + poranne światło to najsilniejszy regulator rytmu okołodobowego (dowody: mocne).",
     checklist: [
-      "Wstań o 07:00, telefon poza ręką",
-      "Pościel łóżko",
-      "Szklanka wody i otwarcie okna",
-      "Światło dzienne / balkon / spacer 10-15 min",
-      "5-10 min rozruchu ciała",
-      "Higiena i łazienka zero"
+      "Pobudka o stałej porze (±30 min, też weekend)",
+      "Telefon nie wchodzi do ręki",
+      "Szklanka wody, pościel łóżko",
+      "10-15 min światła dziennego: balkon / spacer",
+      "5-10 min rozruchu ciała"
     ],
+    minimum: "Wstań o stałej porze + 10 min światła dziennego. Tylko tyle.",
     isDefault: true
   },
   {
-    id: "breakfast-coffee",
-    title: "Paliwo + medytacja",
+    id: "fuel-plan",
+    title: "Paliwo + wybór poziomu dnia",
     category: "health",
-    start: "07:30",
-    end: "08:00",
+    start: "07:45",
+    end: "08:15",
     durationMinutes: 30,
     days: everyDay,
-    priority: "critical",
-    weight: 6,
-    instructions: "Śniadanie i kawa przed medytacją. Medytacja po kofeinie, bez telefonu.",
-    rationale: "Białko stabilizuje energię i sytość; kofeina blokuje receptory adenozynowe. Focused Attention trenuje ACC i dlPFC: wykrycie rozproszenia, hamowanie impulsu, powrót do celu.",
+    priority: "standard",
+    weight: 3,
+    instructions:
+      "Śniadanie białkowe, kawa, wybór poziomu dnia (P1/P2/P3) w 5 sekund i potwierdzenie planu z wczorajszego shutdownu.",
+    rationale:
+      "Białko stabilizuje energię. Wybór poziomu rano zdejmuje negocjacje z całego dnia: w gorszy dzień schodzisz do P1, nie do zera. Opcjonalnie 10 min medytacji uwagi (trening powrotu do celu).",
     checklist: [
-      "35-50 g białka",
-      "Kawa teraz, ostatnia najpóźniej 13:00",
-      "Timer 10 min",
-      "Uwaga na oddech",
-      "Rozproszenie = etykieta 'myśl' i powrót"
+      "30-50 g białka",
+      "Kawa teraz, ostatnia do 13:00",
+      "Wybierz poziom dnia: P1 / P2 / P3",
+      "Przeczytaj MIT zapisany wczoraj wieczorem"
     ],
     isDefault: true
   },
   {
-    id: "deep-work",
-    title: "Deep Work / nauka główna",
-    category: "deepWork",
-    start: "08:00",
-    end: "09:20",
-    durationMinutes: 80,
-    days: everyDay,
+    id: "deep-project",
+    title: "Deep Work: własny projekt",
+    category: "project",
+    start: "08:15",
+    end: "10:00",
+    durationMinutes: 105,
+    days: weekdays,
     priority: "critical",
     weight: 8,
-    instructions: "Główny blok nauki/projektu. Jeden wynik o najwyższej dźwigni: portfolio, kompetencja, kurs, projekt albo zadanie praktyczne. Telefon poza zasięgiem.",
-    rationale: "80 min mieści się w cyklu ultradobowym i ogranicza koszt przełączania. Rano kontrola wykonawcza, pamięć robocza i hamowanie impulsów są najmniej zużyte przez dzień, więc najtrudniejszy materiał idzie przed etatem.",
+    instructions:
+      "Pierwszy blok dnia idzie na projekt, który ma zarabiać. Reguła: zanim blok się skończy, powstaje ≥1 artefakt, który widzi świat (publikacja, oferta, wiadomość, wersja produktu). Najpierw na zewnątrz, potem dłubanie.",
+    rationale:
+      "Rano kontrola wykonawcza jest najświeższa — najtrudniejsza i najbardziej unikana praca idzie pierwsza. Research i ulepszanie narzędzi dają ulgę bez przychodu (produktywna prokrastynacja); wymuszenie artefaktu na zewnątrz odwraca kolejność nagradzania. Telefon w innym pokoju działa przez tarcie: usuwa okazję do przerwań, a to przerwania (nie sama obecność) niszczą skupienie.",
     checklist: [
-      "Biurko zero",
-      "Jedno zadanie, jeden plik, jeden wynik nauki",
-      "80 min bez komunikatorów i sociali",
-      "Na końcu 5 zdań: czego się nauczyłem i następny krok"
+      "Telefon w innym pokoju",
+      "Jedno zadanie z najwyższą dźwignią na pieniądze",
+      "2 x 50 min z 5-10 min przerwy",
+      "Na końcu: co dziś zobaczył świat? (artefakt)"
     ],
+    minimum: "25 min nad projektem, telefon w innym pokoju. Wynik: 1 mały artefakt.",
     isDefault: true
   },
   {
-    id: "weekend-study-sprint",
-    title: "Sprint nauki weekend",
-    category: "deepWork",
-    start: "10:00",
+    id: "job-search",
+    title: "Szukanie pracy (time-box 2h)",
+    category: "jobSearch",
+    start: "10:15",
     end: "12:00",
-    durationMinutes: 120,
-    days: weekendDays,
+    durationMinutes: 105,
+    days: weekdays,
     priority: "critical",
-    weight: 6,
-    instructions: "Sobota i niedziela: większy blok nauki bez etatu w tle. Dwie rundy po 50 min i 10 min przerwy między nimi.",
-    rationale: "Dłuższy weekendowy blok podnosi tygodniową objętość bez dokładania ciężkiego wysiłku poznawczego po pracy. Segmentacja 50/10 zmniejsza spadek uwagi, a blok praktyczny daje lepszy transfer niż bierne oglądanie materiału.",
+    weight: 8,
+    instructions:
+      "Twardy time-box: 2 godziny i koniec. Jakość > ilość: 2-3 dopasowane aplikacje LUB 1 aplikacja + 1 kontakt z człowiekiem (znajomy, rekruter, follow-up). Piątek: przegląd tygodnia aplikacji zamiast nowych.",
+    rationale:
+      "Metaanaliza interwencji (Liu i in. 2014): ustrukturyzowane szukanie z celami wejściowymi + ochroną motywacji daje 2,67x wyższe szanse zatrudnienia. Odmowa = punkt danych procesu ('inoculation against setbacks'). Rozciąganie szukania na 8h daje ruminację i wypalenie, nie oferty (dowody: mocne).",
     checklist: [
-      "50 min: materiał albo implementacja",
-      "10 min: przerwa bez ekranu",
-      "50 min: aktywne odtworzenie / zadanie praktyczne",
-      "Zapisz 3 pytania do powtórki"
+      "Cel dnia: 2-3 dopasowane aplikacje LUB 1 aplikacja + 1 kontakt",
+      "CV/list dopasowane do ogłoszenia, nie masówka",
+      "1 follow-up do wcześniejszej aplikacji",
+      "Zapisz w notatce: co wysłane, do kogo",
+      "Po 2h ZAMYKASZ temat pracy do jutra"
     ],
+    minimum: "1 działanie: jedna aplikacja ALBO jedna wiadomość do człowieka (15 min).",
     isDefault: true
   },
   {
-    id: "morning-buffer",
-    title: "Bufor techniczny",
-    category: "morning",
-    start: "09:20",
-    end: "09:30",
-    durationMinutes: 10,
-    days: weekdays,
+    id: "lunch-walk",
+    title: "Obiad + marsz",
+    category: "health",
+    start: "12:00",
+    end: "13:00",
+    durationMinutes: 60,
+    days: everyDay,
     priority: "standard",
-    weight: 2,
-    instructions: "Zamknij komputer, spakuj rzeczy, bez dokładania nowego zadania.",
-    rationale: "Bufor redukuje efekt domina: jedno opóźnienie nie rozwala wyjścia do pracy.",
-    checklist: [
-      "Zapisz stan pracy",
-      "Zamknij kartę / edytor",
-      "Spakuj jedzenie, portfel, klucze, dokumenty"
-    ],
+    weight: 3,
+    instructions: "Prawdziwy posiłek z białkiem i 10-15 min marszu. Bez feedów przy jedzeniu.",
+    rationale:
+      "Po ciężkim bloku poznawczym krótkie mikroprzerwy nie wystarczają do odzyskania wydajności (metaanaliza Albulescu 2022) — potrzebna jest dłuższa przerwa. Marsz po posiłku dodatkowo poprawia kontrolę glukozy i przerywa siedzenie.",
+    checklist: ["Białko + warzywa + węgle złożone", "10-15 min marszu", "Zero scrollowania przy stole"],
     isDefault: true
   },
   {
-    id: "prepare-work",
-    title: "Prysznic + wyjście bez chaosu",
-    category: "morning",
-    start: "09:30",
-    end: "09:50",
-    durationMinutes: 20,
-    days: weekdays,
-    priority: "critical",
-    weight: 4,
-    instructions: "Limit 20 min. To ma być procedura startowa, nie negocjacje.",
-    rationale: "Stała sekwencja wyjścia zmniejsza obciążenie decyzyjne i chroni punktualność bez zjadania bloku pracy.",
-    checklist: [
-      "Prysznic",
-      "Ubranie",
-      "Klucze, portfel, jedzenie, dokumenty",
-      "Wyjście najpóźniej 09:50"
-    ],
-    isDefault: true
-  },
-  {
-    id: "work-block",
-    title: "Etat bez chaosu",
-    category: "work",
-    start: "10:00",
-    end: "18:00",
-    durationMinutes: 480,
+    id: "deep-learning",
+    title: "Nauka główna",
+    category: "deepWork",
+    start: "13:00",
+    end: "14:45",
+    durationMinutes: 105,
     days: weekdays,
     priority: "critical",
     weight: 7,
-    instructions: "Trzy wyniki do dowiezienia. Przerwy mają wspierać pracę, nie zamieniać się w scroll.",
-    rationale: "Precyzyjne intencje implementacyjne i krótkie przerwy obniżają reaktywność na bodźce oraz stabilizują uwagę w czasie dnia pracy.",
+    instructions:
+      "Blok kompetencji: kurs, dokumentacja, projekt ćwiczeniowy. Aktywnie: pisz kod / rozwiązuj / odtwarzaj z pamięci. Zero biernego oglądania.",
+    rationale:
+      "Retrieval practice i spacing to dwie najlepiej udokumentowane techniki uczenia się (dowody: mocne). Materiał wraca w powtórkach zamiast być 'przerobiony' raz. Nauka po południu jest lżejsza niż tworzenie — dlatego projekt i aplikacje idą rano.",
     checklist: [
-      "Na starcie zapisz 3 konkretne wyniki",
-      "Lunch z białkiem",
-      "5-10 min marszu po posiłku",
-      "Kofeina tylko do 13:00",
-      "Na koniec zapisz stan i następny krok"
+      "5 min: przypomnij wczorajszy materiał Z PAMIĘCI",
+      "2 x 45-50 min pracy aktywnej",
+      "Zapisz 3 pytania do jutrzejszej powtórki",
+      "Efekt nauki dopisuj do portfolio, gdy się da"
     ],
+    minimum: "25 min aktywnej nauki (zadanie lub fiszki), nie oglądanie.",
     isDefault: true
   },
   {
-    id: "reset-strength",
-    title: "Reset + trening siłowy",
+    id: "flex-block",
+    title: "Blok elastyczny",
+    category: "deepWork",
+    start: "15:00",
+    end: "16:30",
+    durationMinutes: 90,
+    days: weekdays,
+    priority: "optional",
+    weight: 2,
+    instructions:
+      "Dokończenie projektu albo nauki — wg tego, co tydzień wymaga. Tu też wchodzą urzędy, lekarz, sprawy życiowe. Jeśli energia siadła — odpuść bez winy, krytyczne bloki już za Tobą.",
+    rationale:
+      "Sufit ~4-5h realnej pracy głębokiej dziennie: powyżej jakość spada i kupujesz crash na jutro. Blok elastyczny domyka dzień bez rozdmuchiwania planu, a plan z luzem przeżywa gorsze dni.",
+    checklist: ["Jedna rzecz, nie trzy", "Jeśli urzędy/sprawy — to jest to miejsce"],
+    isDefault: true
+  },
+  {
+    id: "home-admin",
+    title: "Dom + administracja",
+    category: "admin",
+    start: "16:30",
+    end: "17:15",
+    durationMinutes: 45,
+    days: everyDay,
+    priority: "standard",
+    weight: 3,
+    instructions: "10 min resetu mieszkania + jedna rzecz finansowo-urzędowa. Małe dawki codziennie zamiast góry zaległości.",
+    rationale:
+      "Codzienna mała ekspozycja na finanse/dokumenty redukuje unikanie i ciężar mentalny — zaległości przestają rosnąć w tle. Porządek w otoczeniu obniża tarcie startu następnego dnia.",
+    checklist: ["10 min: kubki, blat, śmieci, ubrania", "1 rzecz: rachunek / mail / dokument / budżet", "Zapisz następny krok, jeśli sprawa ma ciąg dalszy"],
+    isDefault: true
+  },
+  {
+    id: "strength-training",
+    title: "Trening siłowy",
     category: "training",
-    start: "18:10",
-    end: "20:10",
+    start: "17:30",
+    end: "19:30",
     durationMinutes: 120,
     days: strengthDays,
     priority: "critical",
-    weight: 7,
-    instructions: "Wtorek, czwartek, niedziela. Realny blok z dojazdem: reset, przejazd, rozgrzewka, trening, powrót.",
-    rationale: "Trzy sesje tygodniowo są zgodne z progresją treningu oporowego dla regularności i adaptacji. Blok 120 min chroni punktualność, regenerację i sen zamiast udawać nierealne 70 min.",
+    weight: 6,
+    instructions: "Niedziela, wtorek, czwartek. Pełny blok z dojazdem. Dojazd bez scrollowania.",
+    rationale:
+      "Aktywność fizyczna daje średni efekt na depresję i lęk, porównywalny z terapią (przegląd parasolowy Singh i in. 2023: 97 przeglądów, 128 tys. osób). Trening oporowy 3x/tydzień poprawia też funkcje wykonawcze i sen. To codzienne 'małe zwycięstwo' budujące tożsamość osoby, która robi, co zaplanowała.",
     checklist: [
-      "Buty, torba i ubrania na miejsce",
-      "10 min: kubki, śmieci, blat, ubrania",
-      "Dojazd bez scrollowania",
-      "8-10 min rozgrzewki: mobilizacja + serie narastające",
+      "Torba spakowana wcześniej (leży przy drzwiach)",
+      "8-10 min rozgrzewki",
       "4 ruchy główne, 2-3 serie robocze",
       "Zapas 1-3 powtórzeń, bez upadku mięśniowego jako normy",
-      "Zapisz ciężary i wróć do domu"
+      "Zapisz ciężary"
     ],
+    minimum: "10 min ruchu: spacer, przysiady, rozciąganie. Liczy się fakt, nie objętość.",
     isDefault: true
   },
   {
-    id: "reset-recovery",
-    title: "Reset + ruch tlenowy",
+    id: "cardio-walk",
+    title: "Ruch tlenowy",
     category: "training",
-    start: "18:10",
-    end: "19:20",
-    durationMinutes: 70,
+    start: "17:30",
+    end: "18:30",
+    durationMinutes: 60,
     days: recoveryDays,
     priority: "standard",
     weight: 4,
-    instructions: "Poniedziałek, środa, piątek, sobota. Reset mieszkania i szybki marsz zamiast leżenia z telefonem.",
-    rationale: "Niska intensywność dorzuca objętość tlenową, poprawia kontrolę glukozy i regenerację bez kosztu ciężkiego treningu.",
-    checklist: [
-      "Buty, torba i ubrania na miejsce",
-      "10 min resetu mieszkania",
-      "40-60 min szybkiego marszu albo lekkie cardio",
-      "Bez sociali w trakcie"
-    ],
+    instructions: "Poniedziałek, środa, piątek, sobota: 40-60 min szybkiego marszu albo lekkie cardio. Bez sociali w trakcie.",
+    rationale:
+      "Objętość tlenowa w dni nietreningowe: regeneracja, kontrola glukozy, nastrój — bez kosztu ciężkiej sesji. Marsz to też najtańsza forma przerwy od ekranu.",
+    checklist: ["40-60 min marszu / roweru / lekkiego cardio", "Telefon tylko do muzyki/podcastu"],
+    minimum: "10 min spaceru. Wyjdź z domu.",
     isDefault: true
   },
   {
-    id: "dinner-admin-regular",
-    title: "Kolacja + administracja",
-    category: "admin",
+    id: "dinner-reset",
+    title: "Kolacja + kuchnia zero",
+    category: "home",
     start: "19:30",
-    end: "20:20",
-    durationMinutes: 50,
-    days: recoveryDays,
-    priority: "critical",
-    weight: 6,
-    instructions: "Jedzenie, kuchnia zero i jedna rzecz finansowo-organizacyjna.",
-    rationale: "Stabilny posiłek zmniejsza wieczorne impulsy. Codzienna mała ekspozycja na finanse i dokumenty redukuje unikanie oraz ciężar mentalny zaległości.",
-    checklist: [
-      "Kolacja: białko, warzywa, węgle złożone",
-      "Naczynia, blat, śmieci",
-      "Jedna rzecz: rachunek, mail, dokument albo budżet",
-      "Zapisz następny krok administracyjny"
-    ],
-    isDefault: true
-  },
-  {
-    id: "dinner-admin-training",
-    title: "Kolacja potreningowa + minimum admin",
-    category: "admin",
-    start: "20:15",
-    end: "20:55",
-    durationMinutes: 40,
-    days: strengthDays,
-    priority: "critical",
-    weight: 5,
-    instructions: "Po treningu tylko rzeczy niezbędne: jedzenie, kuchnia zero i jeden krótki punkt organizacyjny.",
-    rationale: "Po późnym treningu priorytetem jest uzupełnienie energii, wyciszenie układu nerwowego i ochrona snu. Admin zostaje w wersji minimum, żeby nie rozkręcać pobudzenia poznawczego.",
-    checklist: [
-      "Kolacja z białkiem i węglami",
-      "Prysznic / higiena po treningu",
-      "Kuchnia zero w 8 min",
-      "Jedna krótka rzecz organizacyjna",
-      "Zapisz kolejny trening"
-    ],
-    isDefault: true
-  },
-  {
-    id: "study-evening",
-    title: "Nauka wieczorna",
-    category: "deepWork",
-    start: "20:35",
-    end: "21:15",
-    durationMinutes: 40,
-    days: recoveryStudyDays,
-    priority: "standard",
-    weight: 4,
-    instructions: "Poniedziałek, środa, piątek. Krótki blok po kolacji: aktywne odtwarzanie, zadania praktyczne albo Anki. Zero pasywnego scrollowania kursu.",
-    rationale: "Spacing i retrieval practice dają wyraźnie lepsze utrwalanie niż ponowne czytanie. 40 min domyka łączny dzień nauki do około 2 h bez wchodzenia w fazę wysokiego pobudzenia przed snem.",
-    checklist: [
-      "5 min: wybierz mikrocel",
-      "25 min: zadanie praktyczne / recall bez podglądania",
-      "10 min: korekta błędów i fiszki",
-      "Zapisz, co wraca jutro rano"
-    ],
-    isDefault: true
-  },
-  {
-    id: "training-study-lite",
-    title: "Nauka lekka po treningu",
-    category: "deepWork",
-    start: "21:05",
-    end: "21:35",
-    durationMinutes: 30,
-    days: strengthDays,
-    priority: "standard",
-    weight: 3,
-    instructions: "Tylko niski opór: retrieval, fiszki, przegląd błędów albo czytanie notatek. Nie zaczynaj ciężkiego problemu po treningu.",
-    rationale: "Po późnym treningu priorytetem jest zejście pobudzenia współczulnego i ochrona snu. Krótkie odtwarzanie z pamięci wzmacnia ślady pamięciowe bez dokładania rozbudowanego, wysokoarousalowego bloku.",
-    checklist: [
-      "10-15 fiszek albo 3 pytania z pamięci",
-      "Popraw jeden błąd z poprzedniego bloku",
-      "Zapisz pierwszy krok na jutro"
-    ],
-    isDefault: true
-  },
-  {
-    id: "light-block",
-    title: "Sobotni przegląd lekki",
-    category: "deepWork",
-    start: "20:45",
-    end: "21:15",
-    durationMinutes: 30,
-    days: saturdayOnly,
-    priority: "standard",
-    weight: 3,
-    instructions: "Sobotni lekki przegląd po kolacji: notatki, fiszki, błędy, lista pytań. Bez nowego ciężkiego tematu.",
-    rationale: "Krótka powtórka weekendowa utrzymuje spacing i konsolidację bez zabierania regeneracji.",
-    checklist: [
-      "Przejrzyj notatki z tygodnia",
-      "Zrób 10-15 fiszek albo pytań",
-      "Zapisz temat na niedzielny sprint"
-    ],
-    isDefault: true
-  },
-  {
-    id: "evening-free-buffer",
-    title: "Bufor regeneracyjny (czas wolny)",
-    category: "evening",
-    start: "21:35",
-    end: "22:20",
+    end: "20:15",
     durationMinutes: 45,
+    days: everyDay,
+    priority: "standard",
+    weight: 3,
+    instructions: "Stabilny posiłek i czysta kuchnia. Po treningu siłowym: białko + węgle, prysznic.",
+    rationale: "Stabilna kolacja zmniejsza wieczorne impulsy żywieniowe; czysta kuchnia to mniejsze tarcie jutrzejszego poranka.",
+    checklist: ["Białko + węgle", "Naczynia, blat, śmieci"],
+    isDefault: true
+  },
+  {
+    id: "evening-free",
+    title: "Wieczór wolny (niska stymulacja)",
+    category: "evening",
+    start: "20:15",
+    end: "22:00",
+    durationMinutes: 105,
     days: everyDay,
     priority: "optional",
     weight: 1,
-    instructions: "To jest świadomy czas wolny, nie luka w planie. Ma być nisko-stymulujący: spacer, rozciąganie, rozmowa, prysznic, czytanie papierowe. Bez sociali i bez dokładania nowego projektu.",
-    rationale: "Stały bufor obniża sztywność planu i chroni sen. Niska stymulacja zmniejsza pobudzenie dopaminergiczne i współczulne przed shutdownem, a elastyczność poprawia utrzymanie nawyku.",
-    checklist: [
-      "Ekrany tylko jeśli realnie potrzebne",
-      "Zero sociali i krótkich dopaminowych bodźców",
-      "Uspokój ciało: spacer, mobilizacja albo prysznic",
-      "Nie rozpoczynaj nowej pętli pracy"
-    ],
+    instructions:
+      "Świadomy czas wolny — zaplanowany, nie 'luka'. Ludzie, czytanie, serial z limitem, hobby. Bez doomscrollingu i bez zaczynania nowej pętli pracy.",
+    rationale:
+      "System bez zaplanowanej przyjemności łamie się w 2-3 tygodnie. Regeneracja i kontakt z ludźmi to ochrona nastroju — przy bezrobociu izolacja społeczna jest jednym z głównych czynników pogorszenia zdrowia psychicznego (dowody: mocne).",
+    checklist: ["Zero nieskończonych feedów", "2-3 realne kontakty z ludźmi w tygodniu planowane tutaj", "Nie zaczynaj nowej pracy"],
     isDefault: true
   },
   {
     id: "shutdown",
-    title: "Shutdown",
+    title: "Shutdown: zamknięcie dnia",
     category: "evening",
-    start: "22:30",
-    end: "23:30",
-    durationMinutes: 60,
+    start: "22:00",
+    end: "22:30",
+    durationMinutes: 30,
     days: everyDay,
     priority: "critical",
     weight: 6,
-    instructions: "Zamknięcie dnia i wygaszenie układu nerwowego. Telefon poza łóżkiem.",
-    rationale: "Planowanie jutra przenosi decyzje poza poranek. Niższe światło i skan ciała obniżają pobudzenie, chronią melatoninę i ograniczają ruminacje.",
+    instructions:
+      "Domknięcie pętli: odhacz dzień w aplikacji, zapisz MIT i pierwszy ruch na jutro, telefon na ładowanie poza sypialnią.",
+    rationale:
+      "Zapisanie konkretnego pierwszego zadania na jutro ('jutro o X robię Y') to implementation intention — metaanaliza 94 badań (Gollwitzer i Sheeran 2006) daje efekt d=0,65 na realizację zamiarów. Zabija poranny paraliż 'od czego zacząć'. Domknięcie dnia obniża ruminację i poprawia sen.",
     checklist: [
-      "Plan jutra: 3 wyniki",
-      "Ubranie, jedzenie, biurko i pierwszy krok Deep Work",
-      "Skan ciała 10 min",
-      "Ciepłe światło, zero sociali",
-      "Telefon poza łóżkiem"
+      "Odhacz Wielką Trójkę i bloki w aplikacji",
+      "Zapisz MIT na jutro + pierwszy ruch (otwarty plik, torba przy drzwiach)",
+      "Telefon poza sypialnię",
+      "Światło ciepłe, ekrany off"
     ],
+    minimum: "2 minuty: odhacz dzień + zapisz jedno zadanie na jutro.",
     isDefault: true
   },
   {
     id: "sleep",
-    title: "Sen",
+    title: "Sen 8h",
     category: "health",
-    start: "23:30",
-    durationMinutes: 450,
+    start: "23:00",
+    durationMinutes: 480,
     days: everyDay,
     priority: "critical",
     weight: 6,
-    instructions: "Łóżko. Telefon poza zasięgiem.",
-    rationale: "Sen odbudowuje kontrolę wykonawczą, pamięć i regulację emocji.",
+    instructions: "Łóżko o stałej porze. Telefon poza zasięgiem.",
+    rationale:
+      "Sen to mnożnik wszystkiego: kontrola impulsów, nastrój, pamięć, nauka. Regularność pory snu jest silniejszym predyktorem zdrowia niż długość (Windred i in. 2023) — stała pora bije 'odsypianie'.",
+    minimum: "Połóż się o stałej porze, telefon poza sypialnią.",
+    isDefault: true
+  },
+  {
+    id: "weekend-sprint",
+    title: "Sprint weekendowy: projekt/nauka",
+    category: "project",
+    start: "09:30",
+    end: "11:30",
+    durationMinutes: 120,
+    days: weekendDays,
+    priority: "standard",
+    weight: 5,
+    instructions:
+      "Jeden blok 2h zamiast pełnego dnia pracy: projekt albo nauka, wedle tego co tydzień wymaga. Bez szukania pracy w weekend — rekruterzy i tak nie czytają, a Ty potrzebujesz odstawienia.",
+    rationale:
+      "Weekend chroni regenerację: 1 blok utrzymuje ciągłość i spacing bez wypalenia. Planowane odstawienie od szukania pracy redukuje ruminację i utrzymuje jakość aplikacji w tygodniu.",
+    checklist: ["2 x 50 min", "Sobota: budowa. Niedziela: powtórka + plan tygodnia", "Po bloku — koniec pracy na dziś"],
+    minimum: "25 min projektu albo powtórki. Utrzymaj ciągłość.",
+    isDefault: true
+  },
+  {
+    id: "weekly-review",
+    title: "Przegląd tygodnia (20-30 min)",
+    category: "admin",
+    start: "17:00",
+    end: "17:30",
+    durationMinutes: 30,
+    days: sundayOnly,
+    priority: "critical",
+    weight: 5,
+    instructions:
+      "Niedziela: 3 pytania w zakładce Statystyki — co ruszyło, gdzie najwęższe gardło, jaki JEDEN eksperyment na przyszły tydzień. 30 minut, nie roztrząsanie.",
+    rationale:
+      "Tygodniowa pętla zwrotna koryguje kurs, zanim stracisz miesiąc na ślepej uliczce, i ogranicza sunk-cost. Jedna decyzja tygodniowo zamiast codziennego renegocjowania planu.",
+    checklist: [
+      "Ile dni z działaniem na pracę? Ile na projekt?",
+      "Gdzie było największe tarcie?",
+      "JEDEN eksperyment na nowy tydzień",
+      "Zapisz w zakładce Statystyki"
+    ],
+    minimum: "5 min: odpowiedz na 3 pytania przeglądu w Statystykach.",
     isDefault: true
   }
 ];

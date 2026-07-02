@@ -2,7 +2,9 @@ import {
   Activity,
   BarChart3,
   Bed,
+  BookOpen,
   Brain,
+  Briefcase,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -14,6 +16,7 @@ import {
   Dumbbell,
   Edit3,
   Flame,
+  Footprints,
   Home,
   LayoutDashboard,
   ListChecks,
@@ -22,30 +25,62 @@ import {
   Play,
   Plus,
   RefreshCcw,
+  Rocket,
   Save,
   Settings,
+  Shield,
   ShieldCheck,
   Sun,
   Target,
   Trash2,
+  TriangleAlert,
+  Trophy,
   Upload,
-  X
+  X,
+  Zap
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultSettings, defaultTasks, timerPresets } from "./data/defaultPlan";
+import { guideSections } from "./data/guide";
 import { addDays, currentTimeLabel, dateKey, formatLongDate, formatShortDate, minutesFromTime, parseDateKey } from "./lib/date";
-import { calculateScore, calculateStreak, completionCount, criticalMisses, tasksForDate, weeklyScores } from "./lib/scoring";
-import { createDefaultState, createEmptyLog, loadState, normalizeImportedState, saveState } from "./lib/storage";
-import type { AppSettings, AppState, DayLog, DayMode, RoutineTask, TaskCategory, TaskPriority, TimerPreset } from "./types";
+import {
+  calculateScore,
+  calculateStreak,
+  completionCount,
+  criticalMisses,
+  dayStatus,
+  isNonZeroDay,
+  movementDone,
+  tasksForDate,
+  weekKey,
+  weeklyScores,
+  wonDaysCount
+} from "./lib/scoring";
+import type { DayStatus } from "./lib/scoring";
+import { createEmptyLog, loadState, normalizeImportedState, saveState } from "./lib/storage";
+import type {
+  AppSettings,
+  AppState,
+  DayLevel,
+  DayLog,
+  DayMode,
+  NonNegotiables,
+  RoutineTask,
+  TaskCategory,
+  TaskPriority,
+  TimerPreset,
+  WeeklyReview
+} from "./types";
 
-type View = "today" | "planner" | "stats" | "data";
+type View = "today" | "planner" | "stats" | "guide" | "data";
 
 const dayLabels = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "So"];
 
 const categoryLabels: Record<TaskCategory, string> = {
   morning: "Rano",
-  deepWork: "Skupienie",
-  work: "Etat",
+  deepWork: "Nauka",
+  jobSearch: "Praca",
+  project: "Projekt",
   training: "Trening",
   home: "Dom",
   admin: "Administracja",
@@ -54,22 +89,34 @@ const categoryLabels: Record<TaskCategory, string> = {
 };
 
 const priorityLabels: Record<TaskPriority, string> = {
-  critical: "krytyczne",
+  critical: "kotwica",
   standard: "standard",
   optional: "opcjonalne"
 };
 
 const phaseLabels: Record<string, string> = {
   morning: "Rano",
-  workday: "Etat",
-  afterWork: "Po pracy",
-  night: "Sen"
+  workday: "Dzień pracy własnej",
+  evening: "Wieczór",
+  night: "Zamknięcie dnia"
 };
 
 const dayModeLabels: Record<DayMode, string> = {
   auto: "Auto",
   training: "Trening",
   recovery: "Nietreningowy"
+};
+
+const dayLevelMeta: Record<DayLevel, { label: string; description: string; icon: typeof Shield }> = {
+  p1: { label: "P1 Minimum", description: "zły dzień — nie zerwij ciągłości", icon: Shield },
+  p2: { label: "P2 Standard", description: "domyślny tryb dnia", icon: Activity },
+  p3: { label: "P3 Ofensywa", description: "wysoka energia, sufit 4-5h", icon: Zap }
+};
+
+const statusMeta: Record<DayStatus, { label: string; tone: "good" | "warn" | "bad" }> = {
+  won: { label: "Zaliczony", tone: "good" },
+  nonzero: { label: "Nie-zero", tone: "warn" },
+  zero: { label: "Zero", tone: "bad" }
 };
 
 function uid(): string {
@@ -82,8 +129,10 @@ function getCategoryIcon(category: TaskCategory) {
       return Sun;
     case "deepWork":
       return Brain;
-    case "work":
-      return Clock;
+    case "jobSearch":
+      return Briefcase;
+    case "project":
+      return Rocket;
     case "training":
       return Dumbbell;
     case "home":
@@ -132,11 +181,16 @@ function App() {
 
   const selectedKey = dateKey(selectedDate);
   const log = ensureLog(state.logs, selectedKey);
-  const todayTasks = useMemo(() => tasksForDate(state.tasks, selectedDate, log.dayMode), [state.tasks, selectedDate, log.dayMode]);
+  const dayLevel = log.dayLevel ?? "p2";
+  const todayTasks = useMemo(
+    () => tasksForDate(state.tasks, selectedDate, log.dayMode, dayLevel),
+    [state.tasks, selectedDate, log.dayMode, dayLevel]
+  );
   const score = calculateScore(todayTasks, log);
   const counts = completionCount(todayTasks, log);
   const misses = criticalMisses(todayTasks, log);
-  const streak = calculateStreak(state, selectedDate);
+  const streak = calculateStreak(state, new Date());
+  const status = dayStatus(state.logs[selectedKey]);
 
   useEffect(() => {
     saveState(state);
@@ -166,6 +220,16 @@ function App() {
         skippedTaskIds: currentLog.skippedTaskIds.filter((id) => id !== taskId)
       };
     });
+  }
+
+  function toggleNonNegotiable(key: keyof NonNegotiables): void {
+    updateLog((currentLog) => ({
+      ...currentLog,
+      nonNegotiables: {
+        ...currentLog.nonNegotiables,
+        [key]: !currentLog.nonNegotiables[key]
+      }
+    }));
   }
 
   function upsertTask(task: RoutineTask): void {
@@ -210,6 +274,19 @@ function App() {
     }));
   }
 
+  function updateWeeklyReview(key: string, patch: Partial<WeeklyReview>): void {
+    setState((currentState) => {
+      const current = currentState.weeklyReviews[key] ?? { wins: "", bottleneck: "", experiment: "" };
+      return {
+        ...currentState,
+        weeklyReviews: {
+          ...currentState.weeklyReviews,
+          [key]: { ...current, ...patch }
+        }
+      };
+    });
+  }
+
   function resetToday(): void {
     if (!window.confirm("Wyczyścić wykonanie i metryki dla tego dnia?")) {
       return;
@@ -252,7 +329,7 @@ function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            <ShieldCheck size={24} />
+            <Shield size={22} />
           </div>
           <div>
             <strong>Monk Mode</strong>
@@ -264,19 +341,20 @@ function App() {
           <NavButton active={view === "today"} icon={LayoutDashboard} label="Dzisiaj" onClick={() => setView("today")} />
           <NavButton active={view === "planner"} icon={CalendarDays} label="Plan" onClick={() => setView("planner")} />
           <NavButton active={view === "stats"} icon={BarChart3} label="Statystyki" onClick={() => setView("stats")} />
+          <NavButton active={view === "guide"} icon={BookOpen} label="Przewodnik" onClick={() => setView("guide")} />
           <NavButton active={view === "data"} icon={Settings} label="Dane" onClick={() => setView("data")} />
         </nav>
 
         <div className="sidebar-footer">
-          <span>Cel dnia</span>
-          <strong>{state.settings.scoreTarget}%</strong>
+          <span>Dni nie-zero</span>
+          <strong>{streak}</strong>
         </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Tryb operacyjny</p>
+            <p className="eyebrow">System operacyjny</p>
             <h1>{viewTitle(view)}</h1>
           </div>
           <div className="date-controls">
@@ -301,12 +379,14 @@ function App() {
             onDeleteTask={deleteTask}
             onEditTask={setEditingTask}
             onResetToday={resetToday}
+            onToggleNonNegotiable={toggleNonNegotiable}
             onToggleTask={toggleTask}
             onUpdateLog={updateLog}
             score={score}
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
             state={state}
+            status={status}
             streak={streak}
             tasks={todayTasks}
           />
@@ -324,7 +404,9 @@ function App() {
           />
         )}
 
-        {view === "stats" && <StatsView selectedDate={selectedDate} state={state} />}
+        {view === "stats" && <StatsView onUpdateReview={updateWeeklyReview} selectedDate={selectedDate} state={state} />}
+
+        {view === "guide" && <GuideView />}
 
         {view === "data" && (
           <DataView
@@ -348,7 +430,9 @@ function viewTitle(view: View): string {
     case "planner":
       return "Plan i edycja";
     case "stats":
-      return "Statystyki";
+      return "Statystyki i przegląd";
+    case "guide":
+      return "Przewodnik";
     case "data":
       return "Eksport i import";
   }
@@ -398,12 +482,14 @@ function TodayView({
   onDeleteTask,
   onEditTask,
   onResetToday,
+  onToggleNonNegotiable,
   onToggleTask,
   onUpdateLog,
   score,
   selectedDate,
   setSelectedDate,
   state,
+  status,
   streak,
   tasks
 }: {
@@ -414,44 +500,83 @@ function TodayView({
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: RoutineTask) => void;
   onResetToday: () => void;
+  onToggleNonNegotiable: (key: keyof NonNegotiables) => void;
   onToggleTask: (taskId: string) => void;
   onUpdateLog: (mutator: (current: DayLog) => DayLog) => void;
   score: number;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   state: AppState;
+  status: DayStatus;
   streak: number;
   tasks: RoutineTask[];
 }) {
   const groupedTasks = groupTasks(tasks);
+  const dayLevel = log.dayLevel ?? "p2";
+  const isSelectedToday = dateKey(selectedDate) === dateKey(new Date());
+  const todayKey = dateKey(new Date());
+  const yesterdayLog = state.logs[dateKey(addDays(new Date(), -1))];
+  const hasEarlierHistory = Object.keys(state.logs).some((key) => key < todayKey);
+  const showZeroBanner = isSelectedToday && hasEarlierHistory && !isNonZeroDay(yesterdayLog);
 
   return (
     <div className="page-grid">
+      {showZeroBanner && (
+        <section className="zero-banner">
+          <TriangleAlert size={20} />
+          <div>
+            <strong>Wczoraj było zero. Reguła: nigdy dwa zera z rzędu.</strong>
+            <p>Dziś wystarczy P1 — 25 minut czegokolwiek z Wielkiej Trójki. Nie nadrabiaj, wróć do minimum. Minimum to zwycięstwo.</p>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => onUpdateLog((currentLog) => ({ ...currentLog, dayLevel: "p1" }))}
+          >
+            <Shield size={16} />
+            Ustaw P1
+          </button>
+        </section>
+      )}
+
       <CommandCenter log={log} score={score} selectedDate={selectedDate} settings={state.settings} tasks={tasks} />
 
+      <BigThreePanel log={log} onToggle={onToggleNonNegotiable} status={status} />
+
       <section className="status-grid">
-        <MetricCard label="Wynik" value={`${score}%`} tone={score >= state.settings.scoreTarget ? "good" : "warn"} icon={ShieldCheck} />
+        <MetricCard label="Wynik dnia" value={`${score}%`} tone={score >= state.settings.scoreTarget ? "good" : "warn"} icon={ShieldCheck} />
         <MetricCard label="Bloki" value={`${counts.completed}/${counts.total}`} tone="neutral" icon={Check} />
-        <MetricCard label="Streak" value={`${streak}`} tone="hot" icon={Flame} />
-        <MetricCard label="Ryzyka" value={`${misses}`} tone={misses === 0 ? "good" : "bad"} icon={Circle} />
+        <MetricCard label="Dni nie-zero" value={`${streak}`} tone="hot" icon={Flame} />
+        <MetricCard label="Kotwice otwarte" value={`${misses}`} tone={misses === 0 ? "good" : "bad"} icon={Circle} />
       </section>
 
       <WeekStrip selectedDate={selectedDate} setSelectedDate={setSelectedDate} state={state} />
-      <DayModeSwitch
-        mode={log.dayMode ?? "auto"}
-        onChange={(mode) =>
-          onUpdateLog((currentLog) => ({
-            ...currentLog,
-            dayMode: mode
-          }))
-        }
-      />
+
+      <section className="day-setup">
+        <DayLevelSwitch
+          level={dayLevel}
+          onChange={(level) =>
+            onUpdateLog((currentLog) => ({
+              ...currentLog,
+              dayLevel: level
+            }))
+          }
+        />
+        <DayModeSwitch
+          mode={log.dayMode ?? "auto"}
+          onChange={(mode) =>
+            onUpdateLog((currentLog) => ({
+              ...currentLog,
+              dayMode: mode
+            }))
+          }
+        />
+      </section>
 
       <div className="content-columns">
         <section className="panel task-panel">
           <div className="panel-head">
             <div>
-              <p className="eyebrow">Lista wykonania</p>
+              <p className="eyebrow">{dayLevel === "p1" ? "Tylko minima kotwic" : "Lista wykonania"}</p>
               <h2>Bloki dnia</h2>
             </div>
             <div className="button-row">
@@ -477,6 +602,7 @@ function TodayView({
                   <TaskRow
                     completed={log.completedTaskIds.includes(task.id)}
                     key={task.id}
+                    level={dayLevel}
                     onDelete={onDeleteTask}
                     onEdit={onEditTask}
                     onToggle={onToggleTask}
@@ -489,7 +615,7 @@ function TodayView({
         </section>
 
         <aside className="side-stack">
-          <ProtocolPanel log={log} score={score} target={state.settings.scoreTarget} tasks={tasks} />
+          <ProtocolPanel log={log} tasks={tasks} />
           <FocusTimer />
           <DailyMetrics log={log} onUpdateLog={onUpdateLog} />
           <NotesPanel log={log} onUpdateLog={onUpdateLog} />
@@ -520,8 +646,8 @@ function CommandCenter({
     (isSelectedToday ? openTasks.find((task) => minutesFromTime(task.start) >= nowMinutes) : undefined) ?? openTasks[0] ?? tasks[0];
   const criticalTasks = tasks.filter((task) => task.priority === "critical");
   const criticalDone = criticalTasks.filter((task) => completed.has(task.id)).length;
-  const deepWork = tasks.find((task) => task.id === "deep-work");
-  const prepareWork = tasks.find((task) => task.id === "prepare-work");
+  const projectTask = tasks.find((task) => task.id === "deep-project" || task.id === "weekend-sprint");
+  const jobTask = tasks.find((task) => task.id === "job-search");
   const nextChecklist = nextTask?.checklist?.slice(0, 3) ?? [];
 
   return (
@@ -538,7 +664,7 @@ function CommandCenter({
             <span style={{ width: `${score}%` }} />
           </div>
           <p className="microcopy">
-            Krytyczne: {criticalDone}/{criticalTasks.length}
+            Kotwice: {criticalDone}/{criticalTasks.length}
           </p>
         </div>
       </article>
@@ -567,8 +693,8 @@ function CommandCenter({
         </div>
         <div className="anchor-list">
           <Anchor label="Pobudka" value={settings.wakeTime} />
-          <Anchor label="Deep Work" value={deepWork ? `${deepWork.start}-${deepWork.end}` : "-"} />
-          <Anchor label="Wyjście" value={prepareWork ? `${prepareWork.start}-${prepareWork.end}` : "-"} />
+          <Anchor label="Projekt" value={projectTask ? formatTaskWindow(projectTask) : "-"} />
+          <Anchor label="Praca" value={jobTask ? formatTaskWindow(jobTask) : "wolne"} />
           <Anchor label="Sen" value={settings.bedTime} />
         </div>
       </article>
@@ -582,6 +708,102 @@ function Anchor({ label, value }: { label: string; value: string | undefined }) 
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function BigThreePanel({
+  log,
+  onToggle,
+  status
+}: {
+  log: DayLog;
+  onToggle: (key: keyof NonNegotiables) => void;
+  status: DayStatus;
+}) {
+  const items: Array<{
+    key: keyof NonNegotiables;
+    icon: typeof Briefcase;
+    label: string;
+    description: string;
+    done: boolean;
+    auto?: boolean;
+  }> = [
+    {
+      key: "job",
+      icon: Briefcase,
+      label: "Praca",
+      description: "aplikacja / kontakt / rozmowa / follow-up",
+      done: log.nonNegotiables.job
+    },
+    {
+      key: "project",
+      icon: Rocket,
+      label: "Projekt",
+      description: "artefakt, który zobaczył świat",
+      done: log.nonNegotiables.project
+    },
+    {
+      key: "movement",
+      icon: Footprints,
+      label: "Ruch",
+      description: "minimum 10 minut",
+      done: movementDone(log),
+      auto: !log.nonNegotiables.movement && movementDone(log)
+    }
+  ];
+
+  const meta = statusMeta[status];
+
+  return (
+    <section className="big-three" aria-label="Wielka Trójka">
+      <div className="big-three-head">
+        <div>
+          <p className="eyebrow">Wielka Trójka</p>
+          <h2>Czy ten dzień się liczy?</h2>
+        </div>
+        <span className={`day-status ${status}`}>
+          {status === "won" ? <Trophy size={15} /> : status === "nonzero" ? <Check size={15} /> : <Circle size={15} />}
+          {meta.label}
+        </span>
+      </div>
+      <div className="big-three-items">
+        {items.map(({ auto, description, done, icon: Icon, key, label }) => (
+          <button className={`nn-item ${done ? "done" : ""}`} key={key} onClick={() => onToggle(key)}>
+            <span className="nn-check">{done ? <Check size={16} /> : <Icon size={16} />}</span>
+            <span className="nn-copy">
+              <strong>{label}</strong>
+              <small>{auto ? "zaliczone blokiem treningu" : description}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="big-three-rule">
+        Zaliczony = (praca <em>lub</em> projekt) + ruch. Nie-zero = cokolwiek. Jedyna twarda reguła: <strong>nigdy dwa zera z rzędu</strong>.
+      </p>
+    </section>
+  );
+}
+
+function DayLevelSwitch({ level, onChange }: { level: DayLevel; onChange: (level: DayLevel) => void }) {
+  return (
+    <section className="day-mode-panel" aria-label="Poziom dnia">
+      <div>
+        <p className="eyebrow">Poziom dnia</p>
+        <h2>{dayLevelMeta[level].label}</h2>
+      </div>
+      <div className="mode-toggle">
+        {(Object.keys(dayLevelMeta) as DayLevel[]).map((option) => {
+          const { description, icon: Icon, label } = dayLevelMeta[option];
+          return (
+            <button className={level === option ? "selected" : ""} key={option} onClick={() => onChange(option)}>
+              <Icon size={16} />
+              <span>{label}</span>
+              <small>{description}</small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -602,7 +824,7 @@ function DayModeSwitch({ mode, onChange }: { mode: DayMode; onChange: (mode: Day
     {
       mode: "recovery",
       label: dayModeLabels.recovery,
-      description: "ruch + lekki blok",
+      description: "ruch tlenowy",
       icon: Activity
     }
   ];
@@ -626,32 +848,23 @@ function DayModeSwitch({ mode, onChange }: { mode: DayMode; onChange: (mode: Day
   );
 }
 
-function ProtocolPanel({
-  log,
-  score,
-  target,
-  tasks
-}: {
-  log: DayLog;
-  score: number;
-  target: number;
-  tasks: RoutineTask[];
-}) {
+function ProtocolPanel({ log, tasks }: { log: DayLog; tasks: RoutineTask[] }) {
   const completed = new Set(log.completedTaskIds);
-  const anchorTasks = tasks.filter((task) => ["deep-work", "reset-strength", "reset-recovery", "shutdown"].includes(task.id));
+  const anchorTasks = tasks.filter((task) => task.priority === "critical");
   const anchorDone = anchorTasks.filter((task) => completed.has(task.id)).length;
-  const mode = score >= target ? "Domykanie" : anchorDone > 0 ? "Odzyskiwanie" : "Start";
+  const allDone = anchorTasks.length > 0 && anchorDone === anchorTasks.length;
+  const mode = allDone ? "Domknięte" : anchorDone > 0 ? "W ruchu" : "Start";
   const minimumSteps = [
-    "20 min celu bez telefonu",
-    "10 min resetu środowiska",
-    "Shutdown bez negocjacji"
+    "25 min projektu albo 1 aplikacja",
+    "10 min ruchu",
+    "2 min shutdown + MIT na jutro"
   ];
 
   return (
     <section className="panel protocol-panel">
       <div className="panel-head compact">
         <div>
-          <p className="eyebrow">Plan odporny</p>
+          <p className="eyebrow">Kotwice dnia</p>
           <h2>{mode}</h2>
         </div>
         <ShieldCheck size={20} />
@@ -671,7 +884,7 @@ function ProtocolPanel({
       </div>
 
       <div className="minimum-plan">
-        <strong>Plan minimum</strong>
+        <strong>Plan minimum (P1)</strong>
         <ul>
           {minimumSteps.map((step) => (
             <li key={step}>{step}</li>
@@ -692,14 +905,14 @@ function groupTasks(tasks: RoutineTask[]): Record<string, RoutineTask[]> {
 
 function getTaskPhase(task: RoutineTask): string {
   const minutes = minutesFromTime(task.start);
-  if (minutes < 10 * 60) {
+  if (minutes < 8 * 60 + 15) {
     return "morning";
   }
-  if (minutes < 18 * 60) {
+  if (minutes < 17 * 60 + 30) {
     return "workday";
   }
-  if (minutes < 22 * 60 + 30) {
-    return "afterWork";
+  if (minutes < 22 * 60) {
+    return "evening";
   }
   return "night";
 }
@@ -719,14 +932,17 @@ function WeekStrip({
     <section className="week-strip" aria-label="Tydzień">
       {days.map((day) => {
         const key = dateKey(day);
-        const dayLog = state.logs[key] ?? createEmptyLog(key);
-        const score = calculateScore(tasksForDate(state.tasks, day, dayLog.dayMode), dayLog);
+        const dayLog = state.logs[key];
+        const resolvedLog = dayLog ?? createEmptyLog(key);
+        const score = calculateScore(tasksForDate(state.tasks, day, resolvedLog.dayMode, resolvedLog.dayLevel), resolvedLog);
         const isSelected = key === dateKey(selectedDate);
+        const status = dayStatus(dayLog);
 
         return (
           <button className={`week-day ${isSelected ? "selected" : ""}`} key={key} onClick={() => setSelectedDate(day)}>
             <span>{formatShortDate(day)}</span>
             <strong>{score}%</strong>
+            <i className={`status-dot ${status}`} aria-hidden="true" />
           </button>
         );
       })}
@@ -756,19 +972,22 @@ function MetricCard({
 
 function TaskRow({
   completed,
+  level,
   onDelete,
   onEdit,
   onToggle,
   task
 }: {
   completed: boolean;
+  level?: DayLevel;
   onDelete: (taskId: string) => void;
   onEdit: (task: RoutineTask) => void;
   onToggle: (taskId: string) => void;
   task: RoutineTask;
 }) {
   const Icon = getCategoryIcon(task.category);
-  const checklist = task.checklist ?? [];
+  const isMinimum = level === "p1" && Boolean(task.minimum);
+  const checklist = isMinimum ? [] : task.checklist ?? [];
   const previewChecklist = checklist.slice(0, 2);
   const hiddenChecklistCount = Math.max(0, checklist.length - previewChecklist.length);
 
@@ -792,9 +1011,17 @@ function TaskRow({
         <div className="task-title-line">
           <Icon size={16} />
           <h3>{task.title}</h3>
-          <span className={`priority ${task.priority}`}>{priorityLabels[task.priority]}</span>
+          {isMinimum ? (
+            <span className="priority minimum">minimum</span>
+          ) : (
+            <span className={`priority ${task.priority}`}>{priorityLabels[task.priority]}</span>
+          )}
         </div>
-        {task.instructions && <p>{task.instructions}</p>}
+        {isMinimum ? (
+          <p className="minimum-copy">{task.minimum}</p>
+        ) : (
+          task.instructions && <p>{task.instructions}</p>
+        )}
         {previewChecklist.length > 0 && (
           <ul className="task-checklist">
             {previewChecklist.map((item, index) => (
@@ -806,7 +1033,7 @@ function TaskRow({
             {hiddenChecklistCount > 0 && <li className="more-steps">+{hiddenChecklistCount}</li>}
           </ul>
         )}
-        {(task.rationale || hiddenChecklistCount > 0) && (
+        {!isMinimum && (task.rationale || hiddenChecklistCount > 0) && (
           <details className="task-details">
             <summary>Mechanizm i pełna lista</summary>
             {task.instructions && <p className="task-details-copy">{task.instructions}</p>}
@@ -990,13 +1217,13 @@ function NotesPanel({
       <div className="panel-head compact">
         <div>
           <p className="eyebrow">Dziennik</p>
-          <h2>Notatka</h2>
+          <h2>MIT na jutro</h2>
         </div>
         <Edit3 size={20} />
       </div>
       <textarea
         className="notes"
-        placeholder="Wynik dnia, blokada, decyzja na jutro."
+        placeholder="Najważniejsze zadanie na jutro + pierwszy ruch. Co dziś wysłane / opublikowane?"
         value={log.notes}
         onChange={(event) =>
           onUpdateLog((currentLog) => ({
@@ -1034,7 +1261,7 @@ function PlannerView({
         <div className="panel-head">
           <div>
             <p className="eyebrow">Edycja</p>
-            <h2>Bloki i daily taski</h2>
+            <h2>Bloki i rutyna</h2>
           </div>
           <button className="primary-button" onClick={onAddTask}>
             <Plus size={16} />
@@ -1066,8 +1293,6 @@ function PlannerView({
           </div>
           <div className="settings-grid">
             <TimeSetting label="Pobudka" value={settings.wakeTime} onChange={(value) => onUpdateSettings({ wakeTime: value })} />
-            <TimeSetting label="Start etatu" value={settings.workStart} onChange={(value) => onUpdateSettings({ workStart: value })} />
-            <TimeSetting label="Koniec etatu" value={settings.workEnd} onChange={(value) => onUpdateSettings({ workEnd: value })} />
             <TimeSetting label="Sen" value={settings.bedTime} onChange={(value) => onUpdateSettings({ bedTime: value })} />
             <TimeSetting label="Kawa cutoff" value={settings.caffeineCutoff} onChange={(value) => onUpdateSettings({ caffeineCutoff: value })} />
             <label className="field">
@@ -1110,65 +1335,170 @@ function TimeSetting({ label, onChange, value }: { label: string; onChange: (val
   );
 }
 
-function StatsView({ selectedDate, state }: { selectedDate: Date; state: AppState }) {
+function StatsView({
+  onUpdateReview,
+  selectedDate,
+  state
+}: {
+  onUpdateReview: (key: string, patch: Partial<WeeklyReview>) => void;
+  selectedDate: Date;
+  state: AppState;
+}) {
   const scores = weeklyScores(state, selectedDate);
   const logs = Object.values(state.logs).sort((a, b) => a.date.localeCompare(b.date));
   const last14 = logs.slice(-14);
   const sleepAverage = average(last14.map((item) => item.metrics.sleepHours));
-  const alcoholSum = last14.reduce((sum, item) => sum + item.metrics.alcoholUnits, 0);
-  const focusAverage = average(last14.map((item) => item.metrics.focus));
+  const jobDays14 = last14.filter((item) => item.nonNegotiables.job).length;
+  const projectDays14 = last14.filter((item) => item.nonNegotiables.project).length;
+  const wonDays7 = wonDaysCount(state, selectedDate, 7);
   const missedTasks = calculateMissedTasks(state);
+  const reviewKey = weekKey(selectedDate);
+  const review = state.weeklyReviews[reviewKey] ?? { wins: "", bottleneck: "", experiment: "" };
 
   return (
     <div className="page-grid">
       <section className="status-grid">
-        <MetricCard label="Sen 14d" value={`${sleepAverage.toFixed(1)}h`} tone="neutral" icon={Bed} />
-        <MetricCard label="Alkohol 14d" value={`${alcoholSum}`} tone={alcoholSum === 0 ? "good" : "bad"} icon={Coffee} />
-        <MetricCard label="Focus 14d" value={`${focusAverage.toFixed(1)}/5`} tone="neutral" icon={Brain} />
-        <MetricCard label="Logi" value={`${logs.length}`} tone="hot" icon={CalendarDays} />
+        <MetricCard label="Dni zaliczone 7d" value={`${wonDays7}/7`} tone={wonDays7 >= 5 ? "good" : "warn"} icon={Trophy} />
+        <MetricCard label="Praca 14d" value={`${jobDays14}`} tone={jobDays14 >= 8 ? "good" : "warn"} icon={Briefcase} />
+        <MetricCard label="Projekt 14d" value={`${projectDays14}`} tone={projectDays14 >= 8 ? "good" : "warn"} icon={Rocket} />
+        <MetricCard label="Sen 14d" value={`${sleepAverage.toFixed(1)}h`} tone={sleepAverage >= 7 ? "good" : "bad"} icon={Bed} />
       </section>
 
       <div className="content-columns">
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <p className="eyebrow">Ostatnie dni</p>
-              <h2>Wynik tygodnia</h2>
+        <div className="page-grid">
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">Ostatnie dni</p>
+                <h2>Wynik tygodnia</h2>
+              </div>
+              <BarChart3 size={22} />
             </div>
-            <BarChart3 size={22} />
-          </div>
-          <div className="bar-chart">
-            {scores.map((item) => (
-              <div className="bar-item" key={item.date}>
-                <div className="bar-track">
-                  <span style={{ height: `${item.score}%` }} />
+            <div className="bar-chart">
+              {scores.map((item) => (
+                <div className={`bar-item ${item.status}`} key={item.date}>
+                  <div className="bar-track">
+                    <span style={{ height: `${item.score}%` }} />
+                  </div>
+                  <strong>{item.score}%</strong>
+                  <small>{formatShortDate(parseDateKey(item.date)).split(",")[0]}</small>
                 </div>
-                <strong>{item.score}%</strong>
-                <small>{formatShortDate(parseDateKey(item.date)).split(",")[0]}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <p className="eyebrow">Tarcie</p>
-              <h2>Najczęściej pomijane</h2>
+              ))}
             </div>
-            <Circle size={22} />
-          </div>
-          <div className="missed-list">
-            {missedTasks.length === 0 && <p className="empty-state">Brak danych.</p>}
-            {missedTasks.slice(0, 8).map((item) => (
-              <div className="missed-row" key={item.task.id}>
-                <span>{item.task.title}</span>
-                <strong>{item.missed}</strong>
+          </section>
+
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">Tarcie</p>
+                <h2>Najczęściej pomijane</h2>
               </div>
-            ))}
-          </div>
-        </section>
+              <Circle size={22} />
+            </div>
+            <div className="missed-list">
+              {missedTasks.length === 0 && <p className="empty-state">Brak danych.</p>}
+              {missedTasks.slice(0, 8).map((item) => (
+                <div className="missed-row" key={item.task.id}>
+                  <span>{item.task.title}</span>
+                  <strong>{item.missed}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="side-stack">
+          <section className="panel review-panel">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Niedziela, 20-30 min</p>
+                <h2>Przegląd tygodnia</h2>
+              </div>
+              <CalendarDays size={20} />
+            </div>
+            <p className="review-week">Tydzień od {formatShortDate(parseDateKey(reviewKey))}</p>
+            <label className="field">
+              <span>1. Co realnie ruszyło (praca / projekt)?</span>
+              <textarea
+                value={review.wins}
+                onChange={(event) => onUpdateReview(reviewKey, { wins: event.target.value })}
+                placeholder="Wysłane aplikacje, rozmowy, artefakty projektu..."
+              />
+            </label>
+            <label className="field">
+              <span>2. Gdzie było najwęższe gardło?</span>
+              <textarea
+                value={review.bottleneck}
+                onChange={(event) => onUpdateReview(reviewKey, { bottleneck: event.target.value })}
+                placeholder="Co generowało najwięcej tarcia / unikania?"
+              />
+            </label>
+            <label className="field">
+              <span>3. JEDEN eksperyment na przyszły tydzień</span>
+              <textarea
+                value={review.experiment}
+                onChange={(event) => onUpdateReview(reviewKey, { experiment: event.target.value })}
+                placeholder="Jedna zmiana, nie pięć."
+              />
+            </label>
+          </section>
+        </aside>
       </div>
+    </div>
+  );
+}
+
+function GuideView() {
+  return (
+    <div className="guide-grid">
+      <section className="guide-hero">
+        <p className="eyebrow">Protokół Monk + Founder Mode · edycja bez etatu</p>
+        <h2>System, który ma przeżyć Twój najgorszy dzień</h2>
+        <p>
+          To nie jest plan motywacyjny. To architektura środowiska i zachowań oparta na badaniach — zaprojektowana tak, żeby
+          działała, gdy motywacji nie ma. Bo nie będzie jej w 60% dni.
+        </p>
+        <div className="guide-pillars">
+          <div>
+            <Shield size={18} />
+            <strong>3 poziomy dnia</strong>
+            <small>P1 minimum · P2 standard · P3 ofensywa</small>
+          </div>
+          <div>
+            <Trophy size={18} />
+            <strong>Wielka Trójka</strong>
+            <small>praca · projekt · ruch — to liczy dzień</small>
+          </div>
+          <div>
+            <Flame size={18} />
+            <strong>Nigdy dwa zera</strong>
+            <small>zły dzień = P1, nie katastrofa</small>
+          </div>
+        </div>
+      </section>
+
+      {guideSections.map((section) => (
+        <article className="guide-card" id={section.id} key={section.id}>
+          <div className="guide-card-head">
+            <p className="eyebrow">{section.kicker}</p>
+            {section.evidence && <span className={`evidence ${section.evidence}`}>dowody: {section.evidence}</span>}
+          </div>
+          <h3>{section.title}</h3>
+          {section.body.map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
+          {section.rules && (
+            <ul className="guide-rules">
+              {section.rules.map((rule) => (
+                <li key={rule}>
+                  <Check size={14} />
+                  <span>{rule}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      ))}
     </div>
   );
 }
@@ -1184,7 +1514,7 @@ function calculateMissedTasks(state: AppState): Array<{ task: RoutineTask; misse
   const counters = new Map<string, number>();
 
   Object.values(state.logs).forEach((log) => {
-    const dayTasks = tasksForDate(state.tasks, parseDateKey(log.date), log.dayMode);
+    const dayTasks = tasksForDate(state.tasks, parseDateKey(log.date), log.dayMode, log.dayLevel);
     dayTasks.forEach((task) => {
       if (!log.completedTaskIds.includes(task.id)) {
         counters.set(task.id, (counters.get(task.id) ?? 0) + 1);
@@ -1339,6 +1669,7 @@ function TaskEditor({ onClose, onSave, task }: { onClose: () => void; onSave: (t
       durationMinutes: clampNumber(Number(draft.durationMinutes), 1, 720),
       weight: clampNumber(Number(draft.weight), 1, 10),
       days: draft.days.length > 0 ? draft.days : [new Date().getDay()],
+      minimum: draft.minimum?.trim() ? draft.minimum.trim() : undefined,
       checklist: checklistText
         .split("\n")
         .map((item) => item.trim())
@@ -1426,6 +1757,16 @@ function TaskEditor({ onClose, onSave, task }: { onClose: () => void; onSave: (t
           <label className="field wide">
             <span>Akcja</span>
             <textarea value={draft.instructions} onChange={(event) => update("instructions", event.target.value)} />
+          </label>
+
+          <label className="field wide">
+            <span>Wersja minimum (P1) — puste = blok znika w P1</span>
+            <textarea
+              className="minimum-editor"
+              placeholder="Np. 25 min nad jednym zadaniem, telefon w innym pokoju."
+              value={draft.minimum ?? ""}
+              onChange={(event) => update("minimum", event.target.value)}
+            />
           </label>
 
           <label className="field wide">
